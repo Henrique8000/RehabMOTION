@@ -116,6 +116,9 @@ public class MotionTestScreen extends ScreenAdapter {
             game.switchInput();
             showMessage("Controle: " + game.getInput().getSourceName());
         }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) && !input.isCalibrating()) {
+            game.changeScreen(new GameScreen(game));
+        }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             Gdx.app.exit();
         }
@@ -180,7 +183,7 @@ public class MotionTestScreen extends ScreenAdapter {
 
     private void drawHelp() {
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, "C calibrar    R resetar    I inverter sentido    TAB trocar Arduino/teclado    ESC sair",
+        font.draw(batch, "ENTER jogar    C calibrar    R resetar    I inverter    TAB Arduino/teclado    ESC sair",
             20f, 23f);
     }
 
