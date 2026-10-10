@@ -19,27 +19,9 @@ import br.mackenzie.Main;
 import br.mackenzie.input.AbstractMotionInput;
 import br.mackenzie.input.MotionInput;
 
+import static br.mackenzie.screens.RiverArt.*;
+
 public class MotionTestScreen extends ScreenAdapter {
-
-    private static final float WORLD_WIDTH = 960f;
-    private static final float WORLD_HEIGHT = 600f;
-
-    private static final float HUD_HEIGHT = 130f;
-    private static final float RIVER_TOP = WORLD_HEIGHT - HUD_HEIGHT;
-    private static final float BANK_WIDTH = 80f;
-    private static final float BOAT_Y = 110f;
-    private static final float BOAT_HALF_WIDTH = 70f;
-
-    private static final float BOAT_TRAVEL = WORLD_WIDTH / 2f - BANK_WIDTH - BOAT_HALF_WIDTH - 10f;
-
-    private static final Color WATER = new Color(0.16f, 0.45f, 0.70f, 1f);
-    private static final Color WAVE = new Color(0.35f, 0.62f, 0.85f, 1f);
-    private static final Color BANK = new Color(0.30f, 0.58f, 0.28f, 1f);
-    private static final Color HULL = new Color(0.55f, 0.33f, 0.17f, 1f);
-    private static final Color SAIL = new Color(0.96f, 0.95f, 0.90f, 1f);
-    private static final Color PANEL = new Color(0f, 0f, 0f, 0.65f);
-    private static final Color OK = new Color(0.45f, 0.90f, 0.45f, 1f);
-    private static final Color WARNING = new Color(1f, 0.75f, 0.30f, 1f);
 
     private final Main game;
 
@@ -85,10 +67,10 @@ public class MotionTestScreen extends ScreenAdapter {
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        drawRiver();
-        drawBuoy(boatXFor(-1f));
-        drawBuoy(boatXFor(1f));
-        drawBoat(boatXFor(input.getPosition()), BOAT_Y + (float) Math.sin(time * 2.2f) * 3f);
+        drawRiver(shapes, time * 90f);
+        drawBuoy(xFor(-1f));
+        drawBuoy(xFor(1f));
+        drawBoat(shapes, xFor(input.getPosition()), BOAT_Y + (float) Math.sin(time * 2.2f) * 3f);
         drawHudPanel();
         drawPositionBar(input.getPosition());
         if (input.isCalibrating()) {
@@ -144,52 +126,8 @@ public class MotionTestScreen extends ScreenAdapter {
         messageTimer = 2.5f;
     }
 
-    private float boatXFor(float position) {
-        return WORLD_WIDTH / 2f + position * BOAT_TRAVEL;
-    }
-
-    private void drawRiver() {
-        shapes.setColor(WAVE);
-        float spacing = 70f;
-        float scroll = time * 90f;
-        int firstRow = (int) (scroll / spacing);
-        float offset = scroll % spacing;
-        int row = 0;
-        for (float y = RIVER_TOP - offset; y > -spacing; y -= spacing, row++) {
-            float shift = ((firstRow + row) % 2 == 0) ? 0f : 70f;
-            for (float x = BANK_WIDTH + 30f; x < WORLD_WIDTH - BANK_WIDTH - 40f - shift; x += 140f) {
-                shapes.rect(x + shift, y, 40f, 4f);
-            }
-        }
-
-        shapes.setColor(BANK);
-        shapes.rect(0f, 0f, BANK_WIDTH, RIVER_TOP);
-        shapes.rect(WORLD_WIDTH - BANK_WIDTH, 0f, BANK_WIDTH, RIVER_TOP);
-    }
-
     private void drawBuoy(float x) {
-        float y = 300f + (float) Math.sin(time * 3f + x) * 4f;
-        shapes.setColor(Color.WHITE);
-        shapes.circle(x, y, 16f);
-        shapes.setColor(Color.RED);
-        shapes.circle(x, y, 11f);
-        shapes.setColor(Color.WHITE);
-        shapes.circle(x, y, 5f);
-    }
-
-    private void drawBoat(float x, float y) {
-        shapes.setColor(HULL);
-        shapes.rect(x - 50f, y, 100f, 28f);
-        shapes.triangle(x - 50f, y, x - 50f, y + 28f, x - BOAT_HALF_WIDTH, y + 28f);
-        shapes.triangle(x + 50f, y, x + 50f, y + 28f, x + BOAT_HALF_WIDTH, y + 28f);
-
-        shapes.setColor(Color.DARK_GRAY);
-        shapes.rect(x - 3f, y + 28f, 6f, 95f);
-
-        shapes.setColor(SAIL);
-        shapes.triangle(x + 5f, y + 38f, x + 5f, y + 118f, x + 60f, y + 42f);
-        shapes.setColor(Color.RED);
-        shapes.triangle(x + 3f, y + 123f, x + 3f, y + 138f, x + 25f, y + 130f);
+        RiverArt.drawBuoy(shapes, x, 300f + (float) Math.sin(time * 3f + x) * 4f);
     }
 
     private void drawHudPanel() {
@@ -219,10 +157,10 @@ public class MotionTestScreen extends ScreenAdapter {
 
         font.setColor(Color.WHITE);
         font.draw(batch, String.format(Locale.ROOT, "Bruto: %4.0f     Ângulo: %5.1f graus     Posição: %+.2f",
-                input.getRawValue(), input.getAngle(), input.getPosition()), x, y - line);
+            input.getRawValue(), input.getAngle(), input.getPosition()), x, y - line);
 
         font.draw(batch, String.format(Locale.ROOT, "Amplitude calibrada: %.0f graus%s",
-                input.getCalibratedRangeDegrees(), calibrationRangeText(input)), x, y - 2 * line);
+            input.getCalibratedRangeDegrees(), calibrationRangeText(input)), x, y - 2 * line);
 
         font.draw(batch, "Sentido: " + (input.isInverted() ? "invertido" : "normal"), x, y - 3 * line);
 
@@ -243,7 +181,7 @@ public class MotionTestScreen extends ScreenAdapter {
     private void drawHelp() {
         font.setColor(Color.LIGHT_GRAY);
         font.draw(batch, "C calibrar    R resetar    I inverter sentido    TAB trocar Arduino/teclado    ESC sair",
-                20f, 23f);
+            20f, 23f);
     }
 
     private void drawCalibrationText(MotionInput input) {
