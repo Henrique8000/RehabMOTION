@@ -1,0 +1,7 @@
+eclipse.project.name = appName + '-core'
+
+dependencies {
+    api "com.badlogicgames.gdx:gdx:$gdxVersion"
+
+    api "com.fazecast:jSerialComm:$jSerialCommVersion"
+}

@@ -22,3 +22,23 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# O Gradle Wrapper precisa deste .jar para funcionar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Gradle, IDEs e sistema
+.gradle/
+build/
+*/build/
+out/
+bin/
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+.DS_Store
+Thumbs.db
