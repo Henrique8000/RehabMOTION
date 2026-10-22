@@ -2,6 +2,7 @@ package br.mackenzie;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Screen;
 
 import br.mackenzie.input.MotionInput;
 import br.mackenzie.input.MotionInputs;
@@ -11,6 +12,7 @@ public class Main extends Game {
 
     private final String portName;
     private MotionInput input;
+    private Screen nextScreen;
 
     public Main(String portName) {
         this.portName = portName;
@@ -28,8 +30,18 @@ public class Main extends Game {
 
     @Override
     public void render() {
+        if (nextScreen != null) {
+            Screen old = getScreen();
+            setScreen(nextScreen);
+            nextScreen = null;
+            old.dispose();
+        }
         input.update(Gdx.graphics.getDeltaTime());
         super.render();
+    }
+
+    public void changeScreen(Screen screen) {
+        nextScreen = screen;
     }
 
     public MotionInput getInput() {
@@ -51,6 +63,9 @@ public class Main extends Game {
         super.dispose();
         if (getScreen() != null) {
             getScreen().dispose();
+        }
+        if (nextScreen != null) {
+            nextScreen.dispose();
         }
         if (input != null) {
             input.dispose();
