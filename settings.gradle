@@ -1,0 +1,3 @@
+rootProject.name = 'RehabMOTION'
+
+include 'core', 'lwjgl3'

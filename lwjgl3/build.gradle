@@ -1,0 +1,35 @@
+apply plugin: 'application'
+
+eclipse.project.name = appName + '-lwjgl3'
+
+sourceSets.main.resources.srcDirs += [rootProject.file('assets').path]
+
+application {
+    mainClass = 'br.mackenzie.lwjgl3.Lwjgl3Launcher'
+    applicationName = appName
+}
+
+dependencies {
+    implementation project(':core')
+    implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+}
+
+run {
+    workingDir = rootProject.file('assets')
+    ignoreExitValue = true
+    if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+        jvmArgs += '-XstartOnFirstThread'
+    }
+}
+
+jar {
+    archiveBaseName.set(appName)
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    dependsOn configurations.runtimeClasspath
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    exclude('META-INF/INDEX.LIST', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA')
+    manifest {
+        attributes 'Main-Class': 'br.mackenzie.lwjgl3.Lwjgl3Launcher'
+    }
+}

@@ -1,0 +1,21 @@
+subprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'eclipse'
+    apply plugin: 'idea'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+
+    version = projectVersion
+    ext.appName = 'RehabMOTION'
+
+    repositories {
+        mavenCentral()
+    }
+}
