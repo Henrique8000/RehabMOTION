@@ -1,5 +1,7 @@
 package br.mackenzie.screens;
 
+import java.util.Locale;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.ScreenAdapter;
@@ -30,10 +32,19 @@ public class GameScreen extends ScreenAdapter {
     private static final int START_LIVES = 3;
     private static final float INVULNERABLE_TIME = 1.5f;
 
+    private static final float EDGE_ITEM_CHANCE = 0.65f;
+    private static final float EDGE_THRESHOLD = 0.75f;
+    private static final int ITEM_POINTS = 10;
+    private static final int EDGE_ITEM_POINTS = 20;
+
+    private static final float ITEM_RADIUS = 14f;
+
     private static final Color ROCK = new Color(0.45f, 0.45f, 0.48f, 1f);
     private static final Color ROCK_LIGHT = new Color(0.62f, 0.62f, 0.66f, 1f);
     private static final Color LOG = new Color(0.42f, 0.26f, 0.13f, 1f);
     private static final Color LOG_END = new Color(0.70f, 0.52f, 0.32f, 1f);
+    private static final Color COIN = new Color(1f, 0.80f, 0.15f, 1f);
+    private static final Color COIN_LIGHT = new Color(1f, 0.93f, 0.55f, 1f);
     private static final Color HEART = new Color(0.90f, 0.20f, 0.25f, 1f);
 
     private static class Obstacle {
@@ -59,6 +70,29 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
+    private static class Item {
+        final Circle circle;
+        final boolean nearEdge;
+
+        Item(float x, float y, boolean nearEdge) {
+            this.circle = new Circle(x, y, ITEM_RADIUS);
+            this.nearEdge = nearEdge;
+        }
+    }
+
+    private static class Popup {
+        final String text;
+        final float x;
+        float y;
+        float life = 1f;
+
+        Popup(String text, float x, float y) {
+            this.text = text;
+            this.x = x;
+            this.y = y;
+        }
+    }
+
     private final Main game;
 
     private final FitViewport viewport;
@@ -69,6 +103,8 @@ public class GameScreen extends ScreenAdapter {
     private final GlyphLayout layout = new GlyphLayout();
 
     private final Array<Obstacle> obstacles = new Array<>();
+    private final Array<Item> items = new Array<>();
+    private final Array<Popup> popups = new Array<>();
 
     private final Rectangle hullBox = new Rectangle();
     private final Rectangle sailBox = new Rectangle();
@@ -76,9 +112,14 @@ public class GameScreen extends ScreenAdapter {
     private float elapsed;
     private float scroll;
     private float obstacleTimer;
+    private float itemTimer = SPAWN_INTERVAL / 2f;
     private float invulnerableTimer;
 
+    private int score;
     private int lives = START_LIVES;
+    private int itemsCollected;
+    private int edgeItemsCollected;
+    private int itemsSpawned;
     private int hits;
 
     public GameScreen(Main game) {
@@ -128,6 +169,26 @@ public class GameScreen extends ScreenAdapter {
                 hit();
             }
         }
+
+        for (int i = items.size - 1; i >= 0; i--) {
+            Item item = items.get(i);
+            item.circle.y -= move;
+            if (item.circle.y + ITEM_RADIUS < 0f) {
+                items.removeIndex(i);
+            } else if (Intersector.overlaps(item.circle, hullBox) || Intersector.overlaps(item.circle, sailBox)) {
+                collect(item);
+                items.removeIndex(i);
+            }
+        }
+
+        for (int i = popups.size - 1; i >= 0; i--) {
+            Popup p = popups.get(i);
+            p.y += 40f * delta;
+            p.life -= delta;
+            if (p.life <= 0f) {
+                popups.removeIndex(i);
+            }
+        }
     }
 
     private void spawn(float delta) {
@@ -135,6 +196,11 @@ public class GameScreen extends ScreenAdapter {
         if (obstacleTimer >= SPAWN_INTERVAL) {
             obstacleTimer -= SPAWN_INTERVAL;
             spawnObstacle();
+        }
+        itemTimer += delta;
+        if (itemTimer >= SPAWN_INTERVAL) {
+            itemTimer -= SPAWN_INTERVAL;
+            spawnItem();
         }
     }
 
@@ -155,6 +221,17 @@ public class GameScreen extends ScreenAdapter {
         obstacles.add(o);
     }
 
+    private void spawnItem() {
+        float position;
+        if (MathUtils.randomBoolean(EDGE_ITEM_CHANCE)) {
+            position = MathUtils.random(0.8f, 1f) * (MathUtils.randomBoolean() ? 1f : -1f);
+        } else {
+            position = MathUtils.random(-0.7f, 0.7f);
+        }
+        items.add(new Item(xFor(position), RIVER_TOP + ITEM_RADIUS, Math.abs(position) >= EDGE_THRESHOLD));
+        itemsSpawned++;
+    }
+
     private static float clampToRiver(float x, float halfWidth) {
         return MathUtils.clamp(x, BANK_WIDTH + halfWidth + 4f, WORLD_WIDTH - BANK_WIDTH - halfWidth - 4f);
     }
@@ -163,6 +240,16 @@ public class GameScreen extends ScreenAdapter {
         lives--;
         hits++;
         invulnerableTimer = INVULNERABLE_TIME;
+    }
+
+    private void collect(Item item) {
+        int points = item.nearEdge ? EDGE_ITEM_POINTS : ITEM_POINTS;
+        score += points;
+        itemsCollected++;
+        if (item.nearEdge) {
+            edgeItemsCollected++;
+        }
+        popups.add(new Popup("+" + points, item.circle.x, item.circle.y + 20f));
     }
 
     private void handleKeys() {
@@ -182,6 +269,9 @@ public class GameScreen extends ScreenAdapter {
 
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         drawRiver(shapes, scroll);
+        for (Item item : items) {
+            drawCoin(item);
+        }
         for (Obstacle o : obstacles) {
             drawObstacle(o);
         }
@@ -194,6 +284,11 @@ public class GameScreen extends ScreenAdapter {
 
         batch.begin();
         drawHudText(input);
+        for (Popup p : popups) {
+            font.setColor(1f, 1f, 1f, Math.max(p.life, 0f));
+            layout.setText(font, p.text);
+            font.draw(batch, layout, p.x - layout.width / 2f, p.y);
+        }
         batch.end();
     }
 
@@ -214,6 +309,18 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
+    private void drawCoin(Item item) {
+        Circle c = item.circle;
+        if (item.nearEdge) {
+            shapes.setColor(1f, 1f, 1f, 0.35f);
+            shapes.circle(c.x, c.y, c.radius + 6f);
+        }
+        shapes.setColor(COIN);
+        shapes.circle(c.x, c.y, c.radius);
+        shapes.setColor(COIN_LIGHT);
+        shapes.circle(c.x, c.y, c.radius * 0.55f);
+    }
+
     private void drawHudPanel() {
         shapes.setColor(PANEL);
         shapes.rect(0f, RIVER_TOP, WORLD_WIDTH, HUD_HEIGHT);
@@ -230,6 +337,13 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void drawHudText(MotionInput input) {
+        bigFont.setColor(COIN);
+        bigFont.draw(batch, "Pontos: " + score, 20f, WORLD_HEIGHT - 16f);
+
+        font.setColor(Color.WHITE);
+        font.draw(batch, String.format(Locale.ROOT, "Moedas: %d   (margem: %d)", itemsCollected, edgeItemsCollected),
+            200f, WORLD_HEIGHT - 85f);
+
         font.setColor(input.isConnected() ? OK : WARNING);
         font.draw(batch, input.getSourceName(), 600f, 505f);
 
