@@ -219,10 +219,10 @@ public class MotionTestScreen extends ScreenAdapter {
 
         font.setColor(Color.WHITE);
         font.draw(batch, String.format(Locale.ROOT, "Bruto: %4.0f     Ângulo: %5.1f graus     Posição: %+.2f",
-            input.getRawValue(), input.getAngle(), input.getPosition()), x, y - line);
+                input.getRawValue(), input.getAngle(), input.getPosition()), x, y - line);
 
         font.draw(batch, String.format(Locale.ROOT, "Amplitude calibrada: %.0f graus%s",
-            input.getCalibratedRangeDegrees(), calibrationRangeText(input)), x, y - 2 * line);
+                input.getCalibratedRangeDegrees(), calibrationRangeText(input)), x, y - 2 * line);
 
         font.draw(batch, "Sentido: " + (input.isInverted() ? "invertido" : "normal"), x, y - 3 * line);
 
@@ -243,7 +243,7 @@ public class MotionTestScreen extends ScreenAdapter {
     private void drawHelp() {
         font.setColor(Color.LIGHT_GRAY);
         font.draw(batch, "C calibrar    R resetar    I inverter sentido    TAB trocar Arduino/teclado    ESC sair",
-            20f, 23f);
+                20f, 23f);
     }
 
     private void drawCalibrationText(MotionInput input) {
