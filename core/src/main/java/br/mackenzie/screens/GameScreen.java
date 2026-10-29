@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Circle;
+import com.badlogic.gdx.math.Intersector;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
@@ -26,11 +27,14 @@ public class GameScreen extends ScreenAdapter {
 
     private static final float SCROLL_SPEED = 170f;
     private static final float SPAWN_INTERVAL = 1.1f;
+    private static final int START_LIVES = 3;
+    private static final float INVULNERABLE_TIME = 1.5f;
 
     private static final Color ROCK = new Color(0.45f, 0.45f, 0.48f, 1f);
     private static final Color ROCK_LIGHT = new Color(0.62f, 0.62f, 0.66f, 1f);
     private static final Color LOG = new Color(0.42f, 0.26f, 0.13f, 1f);
     private static final Color LOG_END = new Color(0.70f, 0.52f, 0.32f, 1f);
+    private static final Color HEART = new Color(0.90f, 0.20f, 0.25f, 1f);
 
     private static class Obstacle {
         final boolean isLog;
@@ -49,6 +53,10 @@ public class GameScreen extends ScreenAdapter {
             circle.y -= amount;
             rect.y -= amount;
         }
+
+        boolean hits(Rectangle r) {
+            return isLog ? rect.overlaps(r) : Intersector.overlaps(circle, r);
+        }
     }
 
     private final Main game;
@@ -62,9 +70,16 @@ public class GameScreen extends ScreenAdapter {
 
     private final Array<Obstacle> obstacles = new Array<>();
 
+    private final Rectangle hullBox = new Rectangle();
+    private final Rectangle sailBox = new Rectangle();
+
     private float elapsed;
     private float scroll;
     private float obstacleTimer;
+    private float invulnerableTimer;
+
+    private int lives = START_LIVES;
+    private int hits;
 
     public GameScreen(Main game) {
         this.game = game;
@@ -88,14 +103,18 @@ public class GameScreen extends ScreenAdapter {
         MotionInput input = game.getInput();
         float boatX = xFor(input.getPosition());
 
-        update(delta);
+        update(delta, boatX);
 
         draw(input, boatX);
     }
 
-    private void update(float delta) {
+    private void update(float delta, float boatX) {
         elapsed += delta;
         scroll += SCROLL_SPEED * delta;
+        invulnerableTimer -= delta;
+
+        hullBox.set(boatX - 55f, BOAT_Y, 110f, 28f);
+        sailBox.set(boatX, BOAT_Y + 28f, 55f, 95f);
 
         spawn(delta);
 
@@ -105,6 +124,8 @@ public class GameScreen extends ScreenAdapter {
             o.moveDown(move);
             if (o.top() < 0f) {
                 obstacles.removeIndex(i);
+            } else if (invulnerableTimer <= 0f && (o.hits(hullBox) || o.hits(sailBox))) {
+                hit();
             }
         }
     }
@@ -138,6 +159,12 @@ public class GameScreen extends ScreenAdapter {
         return MathUtils.clamp(x, BANK_WIDTH + halfWidth + 4f, WORLD_WIDTH - BANK_WIDTH - halfWidth - 4f);
     }
 
+    private void hit() {
+        lives--;
+        hits++;
+        invulnerableTimer = INVULNERABLE_TIME;
+    }
+
     private void handleKeys() {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.changeScreen(new MotionTestScreen(game));
@@ -158,7 +185,10 @@ public class GameScreen extends ScreenAdapter {
         for (Obstacle o : obstacles) {
             drawObstacle(o);
         }
-        drawBoat(shapes, boatX, BOAT_Y + (float) Math.sin(elapsed * 2.2f) * 3f);
+        boolean blinkOff = invulnerableTimer > 0f && ((int) (invulnerableTimer * 10f)) % 2 == 0;
+        if (!blinkOff) {
+            drawBoat(shapes, boatX, BOAT_Y + (float) Math.sin(elapsed * 2.2f) * 3f);
+        }
         drawHudPanel();
         shapes.end();
 
@@ -188,6 +218,15 @@ public class GameScreen extends ScreenAdapter {
         shapes.setColor(PANEL);
         shapes.rect(0f, RIVER_TOP, WORLD_WIDTH, HUD_HEIGHT);
         shapes.rect(0f, 0f, WORLD_WIDTH, 34f);
+
+        for (int i = 0; i < START_LIVES; i++) {
+            shapes.setColor(i < lives ? HEART : Color.DARK_GRAY);
+            float x = 30f + i * 40f;
+            float y = WORLD_HEIGHT - 95f;
+            shapes.circle(x - 7f, y + 6f, 9f);
+            shapes.circle(x + 7f, y + 6f, 9f);
+            shapes.triangle(x - 16f, y + 3f, x + 16f, y + 3f, x, y - 16f);
+        }
     }
 
     private void drawHudText(MotionInput input) {
