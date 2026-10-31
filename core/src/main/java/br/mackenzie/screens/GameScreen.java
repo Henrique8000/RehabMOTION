@@ -29,6 +29,7 @@ public class GameScreen extends ScreenAdapter {
 
     private static final float SCROLL_SPEED = 170f;
     private static final float SPAWN_INTERVAL = 1.1f;
+    private static final float PHASE_DURATION = 60f;
     private static final int START_LIVES = 3;
     private static final float INVULNERABLE_TIME = 1.5f;
 
@@ -47,7 +48,7 @@ public class GameScreen extends ScreenAdapter {
     private static final Color COIN_LIGHT = new Color(1f, 0.93f, 0.55f, 1f);
     private static final Color HEART = new Color(0.90f, 0.20f, 0.25f, 1f);
 
-    private enum State { PLAYING, PAUSED }
+    private enum State { PLAYING, PAUSED, GAME_OVER, FINISHED }
 
     private static class Obstacle {
         final boolean isLog;
@@ -124,6 +125,8 @@ public class GameScreen extends ScreenAdapter {
     private int edgeItemsCollected;
     private int itemsSpawned;
     private int hits;
+    private float minPosition;
+    private float maxPosition;
 
     public GameScreen(Main game) {
         this.game = game;
@@ -148,16 +151,19 @@ public class GameScreen extends ScreenAdapter {
         float boatX = xFor(input.getPosition());
 
         if (state == State.PLAYING) {
-            update(delta, boatX);
+            update(delta, input.getPosition(), boatX);
         }
 
         draw(input, boatX);
     }
 
-    private void update(float delta, float boatX) {
+    private void update(float delta, float position, float boatX) {
         elapsed += delta;
         scroll += SCROLL_SPEED * delta;
         invulnerableTimer -= delta;
+
+        minPosition = Math.min(minPosition, position);
+        maxPosition = Math.max(maxPosition, position);
 
         hullBox.set(boatX - 55f, BOAT_Y, 110f, 28f);
         sailBox.set(boatX, BOAT_Y + 28f, 55f, 95f);
@@ -194,9 +200,18 @@ public class GameScreen extends ScreenAdapter {
                 popups.removeIndex(i);
             }
         }
+
+        if (lives <= 0) {
+            state = State.GAME_OVER;
+        } else if (elapsed >= PHASE_DURATION) {
+            state = State.FINISHED;
+        }
     }
 
     private void spawn(float delta) {
+        if (elapsed > PHASE_DURATION - 3f) {
+            return;
+        }
         obstacleTimer += delta;
         if (obstacleTimer >= SPAWN_INTERVAL) {
             obstacleTimer -= SPAWN_INTERVAL;
@@ -264,6 +279,9 @@ public class GameScreen extends ScreenAdapter {
             } else if (state == State.PAUSED) {
                 state = State.PLAYING;
             }
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) && (state == State.GAME_OVER || state == State.FINISHED)) {
+            game.changeScreen(new GameScreen(game));
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.changeScreen(new MotionTestScreen(game));
@@ -351,6 +369,12 @@ public class GameScreen extends ScreenAdapter {
             shapes.circle(x + 7f, y + 6f, 9f);
             shapes.triangle(x - 16f, y + 3f, x + 16f, y + 3f, x, y - 16f);
         }
+
+        float left = 600f, width = 320f, y = 520f;
+        shapes.setColor(Color.DARK_GRAY);
+        shapes.rect(left, y, width, 14f);
+        shapes.setColor(OK);
+        shapes.rect(left, y, width * Math.min(elapsed / PHASE_DURATION, 1f), 14f);
     }
 
     private void drawHudText(MotionInput input) {
@@ -360,6 +384,10 @@ public class GameScreen extends ScreenAdapter {
         font.setColor(Color.WHITE);
         font.draw(batch, String.format(Locale.ROOT, "Moedas: %d   (margem: %d)", itemsCollected, edgeItemsCollected),
             200f, WORLD_HEIGHT - 85f);
+
+        font.setColor(Color.LIGHT_GRAY);
+        int remaining = (int) Math.ceil(Math.max(PHASE_DURATION - elapsed, 0f));
+        font.draw(batch, "Tempo: " + remaining + " s", 600f, 556f);
 
         font.setColor(input.isConnected() ? OK : WARNING);
         font.draw(batch, input.getSourceName(), 600f, 505f);
@@ -374,9 +402,31 @@ public class GameScreen extends ScreenAdapter {
                 drawCentered(bigFont, "PAUSADO", 320f, Color.WHITE);
                 drawCentered(font, "Aperte P para continuar", 270f, Color.LIGHT_GRAY);
                 break;
+            case GAME_OVER:
+                drawCentered(bigFont, "O barco afundou!", 380f, WARNING);
+                drawResults();
+                break;
+            case FINISHED:
+                drawCentered(bigFont, "Fase concluída!", 380f, OK);
+                drawResults();
+                break;
             default:
                 break;
         }
+    }
+
+    private void drawResults() {
+        MotionInput input = game.getInput();
+        float usedFraction = (maxPosition - minPosition) / 2f;
+        float usedDegrees = usedFraction * input.getCalibratedRangeDegrees();
+
+        drawCentered(font, "Pontos: " + score, 330f, Color.WHITE);
+        drawCentered(font, String.format(Locale.ROOT, "Moedas: %d de %d   (na margem: %d)",
+            itemsCollected, itemsSpawned, edgeItemsCollected), 305f, Color.WHITE);
+        drawCentered(font, "Batidas: " + hits, 280f, Color.WHITE);
+        drawCentered(font, String.format(Locale.ROOT, "Amplitude usada: %.0f%% (%.0f de %.0f graus)",
+            usedFraction * 100f, usedDegrees, input.getCalibratedRangeDegrees()), 255f, Color.WHITE);
+        drawCentered(font, "ENTER jogar de novo    ESC tela de teste", 190f, Color.LIGHT_GRAY);
     }
 
     private void drawCentered(BitmapFont f, String text, float y, Color color) {
