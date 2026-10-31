@@ -47,6 +47,8 @@ public class GameScreen extends ScreenAdapter {
     private static final Color COIN_LIGHT = new Color(1f, 0.93f, 0.55f, 1f);
     private static final Color HEART = new Color(0.90f, 0.20f, 0.25f, 1f);
 
+    private enum State { PLAYING, PAUSED }
+
     private static class Obstacle {
         final boolean isLog;
         final Circle circle = new Circle();
@@ -109,6 +111,7 @@ public class GameScreen extends ScreenAdapter {
     private final Rectangle hullBox = new Rectangle();
     private final Rectangle sailBox = new Rectangle();
 
+    private State state = State.PLAYING;
     private float elapsed;
     private float scroll;
     private float obstacleTimer;
@@ -144,7 +147,9 @@ public class GameScreen extends ScreenAdapter {
         MotionInput input = game.getInput();
         float boatX = xFor(input.getPosition());
 
-        update(delta, boatX);
+        if (state == State.PLAYING) {
+            update(delta, boatX);
+        }
 
         draw(input, boatX);
     }
@@ -253,6 +258,13 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void handleKeys() {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.P)) {
+            if (state == State.PLAYING) {
+                state = State.PAUSED;
+            } else if (state == State.PAUSED) {
+                state = State.PLAYING;
+            }
+        }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.changeScreen(new MotionTestScreen(game));
         }
@@ -280,6 +292,10 @@ public class GameScreen extends ScreenAdapter {
             drawBoat(shapes, boatX, BOAT_Y + (float) Math.sin(elapsed * 2.2f) * 3f);
         }
         drawHudPanel();
+        if (state != State.PLAYING) {
+            shapes.setColor(PANEL);
+            shapes.rect(180f, 150f, 600f, 260f);
+        }
         shapes.end();
 
         batch.begin();
@@ -289,6 +305,7 @@ public class GameScreen extends ScreenAdapter {
             layout.setText(font, p.text);
             font.draw(batch, layout, p.x - layout.width / 2f, p.y);
         }
+        drawOverlayText();
         batch.end();
     }
 
@@ -348,7 +365,18 @@ public class GameScreen extends ScreenAdapter {
         font.draw(batch, input.getSourceName(), 600f, 505f);
 
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, "ESC voltar para a tela de teste", 20f, 23f);
+        font.draw(batch, "P pausar    ESC voltar para a tela de teste", 20f, 23f);
+    }
+
+    private void drawOverlayText() {
+        switch (state) {
+            case PAUSED:
+                drawCentered(bigFont, "PAUSADO", 320f, Color.WHITE);
+                drawCentered(font, "Aperte P para continuar", 270f, Color.LIGHT_GRAY);
+                break;
+            default:
+                break;
+        }
     }
 
     private void drawCentered(BitmapFont f, String text, float y, Color color) {
