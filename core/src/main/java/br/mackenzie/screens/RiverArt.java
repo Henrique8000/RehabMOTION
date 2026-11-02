@@ -12,7 +12,8 @@ public final class RiverArt {
     public static final float RIVER_TOP = WORLD_HEIGHT - HUD_HEIGHT;
     public static final float BANK_WIDTH = 80f;
     public static final float BOAT_Y = 110f;
-    public static final float BOAT_HALF_WIDTH = 70f;
+    public static final float BOAT_SCALE = 0.8f;
+    public static final float BOAT_HALF_WIDTH = 70f * BOAT_SCALE;
 
     public static final float BOAT_TRAVEL = WORLD_WIDTH / 2f - BANK_WIDTH - BOAT_HALF_WIDTH - 10f;
 
@@ -60,17 +61,19 @@ public final class RiverArt {
     }
 
     public static void drawBoat(ShapeRenderer shapes, float x, float y) {
+        float s = BOAT_SCALE;
+
         shapes.setColor(HULL);
-        shapes.rect(x - 50f, y, 100f, 28f);
-        shapes.triangle(x - 50f, y, x - 50f, y + 28f, x - BOAT_HALF_WIDTH, y + 28f);
-        shapes.triangle(x + 50f, y, x + 50f, y + 28f, x + BOAT_HALF_WIDTH, y + 28f);
+        shapes.rect(x - 50f * s, y, 100f * s, 28f * s);
+        shapes.triangle(x - 50f * s, y, x - 50f * s, y + 28f * s, x - BOAT_HALF_WIDTH, y + 28f * s);
+        shapes.triangle(x + 50f * s, y, x + 50f * s, y + 28f * s, x + BOAT_HALF_WIDTH, y + 28f * s);
 
         shapes.setColor(Color.DARK_GRAY);
-        shapes.rect(x - 3f, y + 28f, 6f, 95f);
+        shapes.rect(x - 3f * s, y + 28f * s, 6f * s, 95f * s);
 
         shapes.setColor(SAIL);
-        shapes.triangle(x + 5f, y + 38f, x + 5f, y + 118f, x + 60f, y + 42f);
+        shapes.triangle(x + 5f * s, y + 38f * s, x + 5f * s, y + 118f * s, x + 60f * s, y + 42f * s);
         shapes.setColor(Color.RED);
-        shapes.triangle(x + 3f, y + 123f, x + 3f, y + 138f, x + 25f, y + 130f);
+        shapes.triangle(x + 3f * s, y + 123f * s, x + 3f * s, y + 138f * s, x + 25f * s, y + 130f * s);
     }
 }
