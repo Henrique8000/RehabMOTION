@@ -165,8 +165,9 @@ public class GameScreen extends ScreenAdapter {
         minPosition = Math.min(minPosition, position);
         maxPosition = Math.max(maxPosition, position);
 
-        hullBox.set(boatX - 55f, BOAT_Y, 110f, 28f);
-        sailBox.set(boatX, BOAT_Y + 28f, 55f, 95f);
+        float s = BOAT_SCALE;
+        hullBox.set(boatX - 55f * s, BOAT_Y, 110f * s, 28f * s);
+        sailBox.set(boatX, BOAT_Y + 28f * s, 55f * s, 95f * s);
 
         spawn(delta);
 
