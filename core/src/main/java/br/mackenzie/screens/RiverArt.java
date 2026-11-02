@@ -17,9 +17,7 @@ public final class RiverArt {
 
     public static final float BOAT_TRAVEL = WORLD_WIDTH / 2f - BANK_WIDTH - BOAT_HALF_WIDTH - 10f;
 
-    public static final Color WATER = new Color(0.16f, 0.45f, 0.70f, 1f);
-    public static final Color WAVE = new Color(0.35f, 0.62f, 0.85f, 1f);
-    public static final Color BANK = new Color(0.30f, 0.58f, 0.28f, 1f);
+    public static final Color WATER = Theme.RIVER.water;
     public static final Color HULL = new Color(0.55f, 0.33f, 0.17f, 1f);
     public static final Color SAIL = new Color(0.96f, 0.95f, 0.90f, 1f);
     public static final Color PANEL = new Color(0f, 0f, 0f, 0.65f);
@@ -34,7 +32,11 @@ public final class RiverArt {
     }
 
     public static void drawRiver(ShapeRenderer shapes, float scroll) {
-        shapes.setColor(WAVE);
+        drawRiver(shapes, scroll, Theme.RIVER);
+    }
+
+    public static void drawRiver(ShapeRenderer shapes, float scroll, Theme theme) {
+        shapes.setColor(theme.wave);
         float spacing = 70f;
         int firstRow = (int) (scroll / spacing);
         float offset = scroll % spacing;
@@ -46,9 +48,49 @@ public final class RiverArt {
             }
         }
 
-        shapes.setColor(BANK);
+        shapes.setColor(theme.bank);
         shapes.rect(0f, 0f, BANK_WIDTH, RIVER_TOP);
         shapes.rect(WORLD_WIDTH - BANK_WIDTH, 0f, BANK_WIDTH, RIVER_TOP);
+
+        if (theme == Theme.JUNGLE) {
+            drawJungle(shapes, scroll, theme);
+        }
+    }
+
+    private static void drawJungle(ShapeRenderer shapes, float scroll, Theme theme) {
+        float spacing = 110f;
+        int firstSlot = (int) (scroll / spacing);
+        float offset = scroll % spacing;
+        int slot = 0;
+        for (float y = RIVER_TOP - offset; y > -spacing; y -= spacing, slot++) {
+            int n = firstSlot + slot;
+            drawJungleSlot(shapes, BANK_WIDTH / 2f, y, n, theme, -1f);
+            drawJungleSlot(shapes, WORLD_WIDTH - BANK_WIDTH / 2f, y + 55f, n + 1, theme, 1f);
+        }
+    }
+
+    private static void drawJungleSlot(ShapeRenderer shapes, float x, float y, int n, Theme theme, float side) {
+        float towardRiver = -side;
+        if (n % 2 == 0) {
+            shapes.setColor(theme.log);
+            shapes.rect(x - 4f, y - 20f, 8f, 50f);
+            shapes.setColor(theme.bankDetail);
+            float top = y + 30f;
+            shapes.triangle(x, top, x - 38f, top - 6f, x - 14f, top + 10f);
+            shapes.triangle(x, top, x + 38f, top - 6f, x + 14f, top + 10f);
+            shapes.triangle(x, top, x - 22f, top + 26f, x + 4f, top + 12f);
+            shapes.triangle(x, top, x + 22f, top + 26f, x - 4f, top + 12f);
+        } else {
+            shapes.setColor(theme.bankDetail);
+            shapes.circle(x - 14f, y, 16f);
+            shapes.circle(x + 12f, y + 4f, 18f);
+            shapes.circle(x, y + 16f, 15f);
+            shapes.setColor(n % 3 == 0 ? Color.MAGENTA : Color.YELLOW);
+            shapes.circle(x + 6f, y + 10f, 4f);
+        }
+        shapes.setColor(theme.bankDetail);
+        float edge = x + towardRiver * BANK_WIDTH / 2f;
+        shapes.triangle(edge, y - 12f, edge, y + 12f, edge + towardRiver * 22f, y - 4f);
     }
 
     public static void drawBuoy(ShapeRenderer shapes, float x, float y) {

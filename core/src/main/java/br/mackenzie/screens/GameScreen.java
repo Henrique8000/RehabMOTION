@@ -38,12 +38,9 @@ public class GameScreen extends ScreenAdapter {
 
     private static final float ITEM_RADIUS = 14f;
 
-    private static final Color ROCK = new Color(0.45f, 0.45f, 0.48f, 1f);
-    private static final Color ROCK_LIGHT = new Color(0.62f, 0.62f, 0.66f, 1f);
-    private static final Color LOG = new Color(0.42f, 0.26f, 0.13f, 1f);
-    private static final Color LOG_END = new Color(0.70f, 0.52f, 0.32f, 1f);
     private static final Color COIN = new Color(1f, 0.80f, 0.15f, 1f);
     private static final Color COIN_LIGHT = new Color(1f, 0.93f, 0.55f, 1f);
+    private static final Color COIN_OUTLINE = new Color(0f, 0f, 0f, 0.5f);
     private static final Color HEART = new Color(0.90f, 0.20f, 0.25f, 1f);
 
     private enum State { INTRO, PLAYING, PAUSED, WON, LOST }
@@ -96,6 +93,7 @@ public class GameScreen extends ScreenAdapter {
 
     private final Main game;
     private final Phase phase;
+    private final Theme theme;
 
     private final FitViewport viewport;
     private final ShapeRenderer shapes;
@@ -135,6 +133,7 @@ public class GameScreen extends ScreenAdapter {
     public GameScreen(Main game, Phase phase) {
         this.game = game;
         this.phase = phase;
+        this.theme = phase.theme;
         itemTimer = phase.spawnInterval / 2f;
 
         viewport = new FitViewport(WORLD_WIDTH, WORLD_HEIGHT);
@@ -332,7 +331,7 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void draw(MotionInput input, float boatX) {
-        ScreenUtils.clear(WATER);
+        ScreenUtils.clear(theme.water);
         viewport.apply();
         shapes.setProjectionMatrix(viewport.getCamera().combined);
         batch.setProjectionMatrix(viewport.getCamera().combined);
@@ -341,7 +340,7 @@ public class GameScreen extends ScreenAdapter {
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        drawRiver(shapes, scroll);
+        drawRiver(shapes, scroll, theme);
         for (Item item : items) {
             drawCoin(item);
         }
@@ -376,16 +375,16 @@ public class GameScreen extends ScreenAdapter {
     private void drawObstacle(Obstacle o) {
         if (o.isLog) {
             Rectangle r = o.rect;
-            shapes.setColor(LOG);
+            shapes.setColor(theme.log);
             shapes.rect(r.x, r.y, r.width, r.height);
-            shapes.setColor(LOG_END);
+            shapes.setColor(theme.logEnd);
             shapes.circle(r.x, r.y + r.height / 2f, r.height / 2f);
             shapes.circle(r.x + r.width, r.y + r.height / 2f, r.height / 2f);
         } else {
             Circle c = o.circle;
-            shapes.setColor(ROCK);
+            shapes.setColor(theme.rock);
             shapes.circle(c.x, c.y, c.radius);
-            shapes.setColor(ROCK_LIGHT);
+            shapes.setColor(theme.rockLight);
             shapes.circle(c.x - c.radius * 0.3f, c.y + c.radius * 0.3f, c.radius * 0.35f);
         }
     }
@@ -394,8 +393,10 @@ public class GameScreen extends ScreenAdapter {
         Circle c = item.circle;
         if (item.nearEdge) {
             shapes.setColor(1f, 1f, 1f, 0.35f);
-            shapes.circle(c.x, c.y, c.radius + 6f);
+            shapes.circle(c.x, c.y, c.radius + 7f);
         }
+        shapes.setColor(COIN_OUTLINE);
+        shapes.circle(c.x, c.y, c.radius + 3f);
         shapes.setColor(COIN);
         shapes.circle(c.x, c.y, c.radius);
         shapes.setColor(COIN_LIGHT);
