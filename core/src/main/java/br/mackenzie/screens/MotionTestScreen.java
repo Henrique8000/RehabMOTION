@@ -16,6 +16,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 
 import br.mackenzie.Main;
+import br.mackenzie.game.Phase;
 import br.mackenzie.input.AbstractMotionInput;
 import br.mackenzie.input.MotionInput;
 
@@ -117,7 +118,7 @@ public class MotionTestScreen extends ScreenAdapter {
             showMessage("Controle: " + game.getInput().getSourceName());
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) && !input.isCalibrating()) {
-            game.changeScreen(new GameScreen(game));
+            game.changeScreen(new GameScreen(game, Phase.ONE));
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             Gdx.app.exit();

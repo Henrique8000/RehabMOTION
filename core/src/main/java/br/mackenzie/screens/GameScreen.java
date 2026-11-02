@@ -21,19 +21,16 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 
 import br.mackenzie.Main;
+import br.mackenzie.game.Phase;
 import br.mackenzie.input.MotionInput;
 
 import static br.mackenzie.screens.RiverArt.*;
 
 public class GameScreen extends ScreenAdapter {
 
-    private static final float SCROLL_SPEED = 170f;
-    private static final float SPAWN_INTERVAL = 1.1f;
-    private static final float PHASE_DURATION = 60f;
     private static final int START_LIVES = 3;
     private static final float INVULNERABLE_TIME = 1.5f;
 
-    private static final float EDGE_ITEM_CHANCE = 0.65f;
     private static final float EDGE_THRESHOLD = 0.75f;
     private static final int ITEM_POINTS = 10;
     private static final int EDGE_ITEM_POINTS = 20;
@@ -97,6 +94,7 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private final Main game;
+    private final Phase phase;
 
     private final FitViewport viewport;
     private final ShapeRenderer shapes;
@@ -116,7 +114,7 @@ public class GameScreen extends ScreenAdapter {
     private float elapsed;
     private float scroll;
     private float obstacleTimer;
-    private float itemTimer = SPAWN_INTERVAL / 2f;
+    private float itemTimer;
     private float invulnerableTimer;
 
     private int score;
@@ -128,8 +126,11 @@ public class GameScreen extends ScreenAdapter {
     private float minPosition;
     private float maxPosition;
 
-    public GameScreen(Main game) {
+    public GameScreen(Main game, Phase phase) {
         this.game = game;
+        this.phase = phase;
+        itemTimer = phase.spawnInterval / 2f;
+
         viewport = new FitViewport(WORLD_WIDTH, WORLD_HEIGHT);
         shapes = new ShapeRenderer();
         batch = new SpriteBatch();
@@ -159,7 +160,7 @@ public class GameScreen extends ScreenAdapter {
 
     private void update(float delta, float position, float boatX) {
         elapsed += delta;
-        scroll += SCROLL_SPEED * delta;
+        scroll += phase.scrollSpeed * delta;
         invulnerableTimer -= delta;
 
         minPosition = Math.min(minPosition, position);
@@ -171,7 +172,7 @@ public class GameScreen extends ScreenAdapter {
 
         spawn(delta);
 
-        float move = SCROLL_SPEED * delta;
+        float move = phase.scrollSpeed * delta;
         for (int i = obstacles.size - 1; i >= 0; i--) {
             Obstacle o = obstacles.get(i);
             o.moveDown(move);
@@ -204,23 +205,23 @@ public class GameScreen extends ScreenAdapter {
 
         if (lives <= 0) {
             state = State.GAME_OVER;
-        } else if (elapsed >= PHASE_DURATION) {
+        } else if (elapsed >= phase.duration) {
             state = State.FINISHED;
         }
     }
 
     private void spawn(float delta) {
-        if (elapsed > PHASE_DURATION - 3f) {
+        if (elapsed > phase.duration - 3f) {
             return;
         }
         obstacleTimer += delta;
-        if (obstacleTimer >= SPAWN_INTERVAL) {
-            obstacleTimer -= SPAWN_INTERVAL;
+        if (obstacleTimer >= phase.spawnInterval) {
+            obstacleTimer -= phase.spawnInterval;
             spawnObstacle();
         }
         itemTimer += delta;
-        if (itemTimer >= SPAWN_INTERVAL) {
-            itemTimer -= SPAWN_INTERVAL;
+        if (itemTimer >= phase.spawnInterval) {
+            itemTimer -= phase.spawnInterval;
             spawnItem();
         }
     }
@@ -244,7 +245,7 @@ public class GameScreen extends ScreenAdapter {
 
     private void spawnItem() {
         float position;
-        if (MathUtils.randomBoolean(EDGE_ITEM_CHANCE)) {
+        if (MathUtils.randomBoolean(phase.edgeItemChance)) {
             position = MathUtils.random(0.8f, 1f) * (MathUtils.randomBoolean() ? 1f : -1f);
         } else {
             position = MathUtils.random(-0.7f, 0.7f);
@@ -281,8 +282,12 @@ public class GameScreen extends ScreenAdapter {
                 state = State.PLAYING;
             }
         }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) && (state == State.GAME_OVER || state == State.FINISHED)) {
-            game.changeScreen(new GameScreen(game));
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+            if (state == State.GAME_OVER) {
+                game.changeScreen(new GameScreen(game, phase));
+            } else if (state == State.FINISHED) {
+                game.changeScreen(new GameScreen(game, phase.isLast() ? Phase.ONE : phase.next()));
+            }
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.changeScreen(new MotionTestScreen(game));
@@ -375,19 +380,22 @@ public class GameScreen extends ScreenAdapter {
         shapes.setColor(Color.DARK_GRAY);
         shapes.rect(left, y, width, 14f);
         shapes.setColor(OK);
-        shapes.rect(left, y, width * Math.min(elapsed / PHASE_DURATION, 1f), 14f);
+        shapes.rect(left, y, width * Math.min(elapsed / phase.duration, 1f), 14f);
     }
 
     private void drawHudText(MotionInput input) {
+        font.setColor(Color.LIGHT_GRAY);
+        font.draw(batch, phase.title, 20f, WORLD_HEIGHT - 12f);
+
         bigFont.setColor(COIN);
-        bigFont.draw(batch, "Pontos: " + score, 20f, WORLD_HEIGHT - 16f);
+        bigFont.draw(batch, "Pontos: " + score, 20f, WORLD_HEIGHT - 32f);
 
         font.setColor(Color.WHITE);
         font.draw(batch, String.format(Locale.ROOT, "Moedas: %d   (margem: %d)", itemsCollected, edgeItemsCollected),
             200f, WORLD_HEIGHT - 85f);
 
         font.setColor(Color.LIGHT_GRAY);
-        int remaining = (int) Math.ceil(Math.max(PHASE_DURATION - elapsed, 0f));
+        int remaining = (int) Math.ceil(Math.max(phase.duration - elapsed, 0f));
         font.draw(batch, "Tempo: " + remaining + " s", 600f, 556f);
 
         font.setColor(input.isConnected() ? OK : WARNING);
@@ -406,10 +414,13 @@ public class GameScreen extends ScreenAdapter {
             case GAME_OVER:
                 drawCentered(bigFont, "O barco afundou!", 380f, WARNING);
                 drawResults();
+                drawCentered(font, "ENTER tentar de novo    ESC tela de teste", 190f, Color.LIGHT_GRAY);
                 break;
             case FINISHED:
-                drawCentered(bigFont, "Fase concluída!", 380f, OK);
+                drawCentered(bigFont, phase.isLast() ? "Você completou o rio!" : phase.title + " concluída!", 380f, OK);
                 drawResults();
+                drawCentered(font, phase.isLast() ? "ENTER jogar de novo    ESC tela de teste"
+                    : "ENTER próxima fase    ESC tela de teste", 190f, Color.LIGHT_GRAY);
                 break;
             default:
                 break;
@@ -427,7 +438,6 @@ public class GameScreen extends ScreenAdapter {
         drawCentered(font, "Batidas: " + hits, 280f, Color.WHITE);
         drawCentered(font, String.format(Locale.ROOT, "Amplitude usada: %.0f%% (%.0f de %.0f graus)",
             usedFraction * 100f, usedDegrees, input.getCalibratedRangeDegrees()), 255f, Color.WHITE);
-        drawCentered(font, "ENTER jogar de novo    ESC tela de teste", 190f, Color.LIGHT_GRAY);
     }
 
     private void drawCentered(BitmapFont f, String text, float y, Color color) {
