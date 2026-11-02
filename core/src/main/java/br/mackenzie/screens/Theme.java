@@ -14,7 +14,13 @@ public enum Theme {
         rgb(0.10f, 0.38f, 0.33f), rgb(0.22f, 0.52f, 0.44f),
         rgb(0.10f, 0.33f, 0.12f), rgb(0.18f, 0.52f, 0.20f),
         rgb(0.35f, 0.38f, 0.32f), rgb(0.48f, 0.55f, 0.42f),
-        rgb(0.33f, 0.22f, 0.10f), rgb(0.55f, 0.42f, 0.25f));
+        rgb(0.33f, 0.22f, 0.10f), rgb(0.55f, 0.42f, 0.25f)),
+
+    VOLCANO(
+        rgb(0.80f, 0.25f, 0.05f), rgb(1.00f, 0.60f, 0.10f),
+        rgb(0.17f, 0.14f, 0.14f), rgb(0.95f, 0.40f, 0.08f),
+        rgb(0.20f, 0.18f, 0.18f), rgb(0.95f, 0.45f, 0.10f),
+        rgb(0.15f, 0.12f, 0.10f), rgb(1.00f, 0.55f, 0.15f));
 
     public final Color water;
     public final Color wave;
