@@ -6,7 +6,7 @@ public enum Phase {
 
     ONE(  "Fase 1: Rio",               Theme.RIVER,   150f,  1.3f,   0.50f,  8,   60f),
     TWO(  "Fase 2: Floresta tropical", Theme.JUNGLE,  190f,  1.05f,  0.65f,  12,  60f),
-    THREE("Fase 3",                    Theme.RIVER,   230f,  0.85f,  0.80f,  16,  60f);
+    THREE("Fase 3: Vulcão",            Theme.VOLCANO, 230f,  0.85f,  0.80f,  16,  60f);
 
     public final String title;
     public final Theme theme;

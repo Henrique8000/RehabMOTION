@@ -52,20 +52,31 @@ public final class RiverArt {
         shapes.rect(0f, 0f, BANK_WIDTH, RIVER_TOP);
         shapes.rect(WORLD_WIDTH - BANK_WIDTH, 0f, BANK_WIDTH, RIVER_TOP);
 
-        if (theme == Theme.JUNGLE) {
-            drawJungle(shapes, scroll, theme);
+        if (theme != Theme.RIVER) {
+            drawBankDecor(shapes, scroll, theme);
         }
     }
 
-    private static void drawJungle(ShapeRenderer shapes, float scroll, Theme theme) {
+    private static void drawBankDecor(ShapeRenderer shapes, float scroll, Theme theme) {
         float spacing = 110f;
         int firstSlot = (int) (scroll / spacing);
         float offset = scroll % spacing;
         int slot = 0;
         for (float y = RIVER_TOP - offset; y > -spacing; y -= spacing, slot++) {
             int n = firstSlot + slot;
-            drawJungleSlot(shapes, BANK_WIDTH / 2f, y, n, theme, -1f);
-            drawJungleSlot(shapes, WORLD_WIDTH - BANK_WIDTH / 2f, y + 55f, n + 1, theme, 1f);
+            if (theme == Theme.JUNGLE) {
+                drawJungleSlot(shapes, BANK_WIDTH / 2f, y, n, theme, -1f);
+                drawJungleSlot(shapes, WORLD_WIDTH - BANK_WIDTH / 2f, y + 55f, n + 1, theme, 1f);
+            } else if (theme == Theme.VOLCANO) {
+                drawCrack(shapes, BANK_WIDTH / 2f, y, n, theme);
+                drawCrack(shapes, WORLD_WIDTH - BANK_WIDTH / 2f, y + 55f, n + 1, theme);
+            }
+        }
+
+        if (theme == Theme.VOLCANO) {
+            shapes.setColor(theme.wave);
+            shapes.rect(BANK_WIDTH - 5f, 0f, 5f, RIVER_TOP);
+            shapes.rect(WORLD_WIDTH - BANK_WIDTH, 0f, 5f, RIVER_TOP);
         }
     }
 
@@ -91,6 +102,18 @@ public final class RiverArt {
         shapes.setColor(theme.bankDetail);
         float edge = x + towardRiver * BANK_WIDTH / 2f;
         shapes.triangle(edge, y - 12f, edge, y + 12f, edge + towardRiver * 22f, y - 4f);
+    }
+
+    private static void drawCrack(ShapeRenderer shapes, float x, float y, int n, Theme theme) {
+        float flip = (n % 2 == 0) ? 1f : -1f;
+        shapes.setColor(theme.bankDetail);
+        shapes.rectLine(x - 18f * flip, y + 30f, x + 6f * flip, y + 12f, 4f);
+        shapes.rectLine(x + 6f * flip, y + 12f, x - 8f * flip, y - 8f, 4f);
+        shapes.rectLine(x - 8f * flip, y - 8f, x + 16f * flip, y - 28f, 3f);
+        if (n % 3 == 0) {
+            shapes.setColor(theme.wave);
+            shapes.circle(x + 14f * flip, y + 26f, 5f);
+        }
     }
 
     public static void drawBuoy(ShapeRenderer shapes, float x, float y) {

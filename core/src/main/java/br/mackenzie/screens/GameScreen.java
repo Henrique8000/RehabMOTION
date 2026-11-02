@@ -1,5 +1,6 @@
 package br.mackenzie.screens;
 
+import java.util.List;
 import java.util.Locale;
 
 import com.badlogic.gdx.Gdx;
@@ -22,6 +23,7 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 
 import br.mackenzie.Main;
 import br.mackenzie.game.Phase;
+import br.mackenzie.game.PhaseResult;
 import br.mackenzie.input.MotionInput;
 
 import static br.mackenzie.screens.RiverArt.*;
@@ -43,7 +45,7 @@ public class GameScreen extends ScreenAdapter {
     private static final Color COIN_OUTLINE = new Color(0f, 0f, 0f, 0.5f);
     private static final Color HEART = new Color(0.90f, 0.20f, 0.25f, 1f);
 
-    private enum State { INTRO, PLAYING, PAUSED, WON, LOST }
+    private enum State { INTRO, PLAYING, PAUSED, WON, LOST, COMPLETE }
 
     private static class Obstacle {
         final boolean isLog;
@@ -221,7 +223,7 @@ public class GameScreen extends ScreenAdapter {
             lose("O barco afundou!");
         } else if (elapsed >= phase.duration) {
             if (itemsCollected >= phase.coinGoal) {
-                state = State.WON;
+                win();
             } else {
                 int missing = phase.coinGoal - itemsCollected;
                 lose("Faltou " + missing + (missing == 1 ? " moeda!" : " moedas!"));
@@ -297,9 +299,19 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
+    private void win() {
+        game.getResults().add(new PhaseResult(phase, score, itemsCollected, edgeItemsCollected, hits,
+            usedAmplitudeFraction(), usedAmplitudeFraction() * game.getInput().getCalibratedRangeDegrees()));
+        state = phase.isLast() ? State.COMPLETE : State.WON;
+    }
+
     private void lose(String reason) {
         lostReason = reason;
         state = State.LOST;
+    }
+
+    private float usedAmplitudeFraction() {
+        return (maxPosition - minPosition) / 2f;
     }
 
     private void handleKeys() {
@@ -316,10 +328,14 @@ public class GameScreen extends ScreenAdapter {
                     state = State.PLAYING;
                     break;
                 case WON:
-                    game.changeScreen(new GameScreen(game, phase.isLast() ? Phase.ONE : phase.next()));
+                    game.changeScreen(new GameScreen(game, phase.next()));
                     break;
                 case LOST:
                     game.changeScreen(new GameScreen(game, phase));
+                    break;
+                case COMPLETE:
+                    game.getResults().clear();
+                    game.changeScreen(new GameScreen(game, Phase.ONE));
                     break;
                 default:
                     break;
@@ -352,7 +368,10 @@ public class GameScreen extends ScreenAdapter {
             drawBoat(shapes, boatX, BOAT_Y + (float) Math.sin(animTime * 2.2f) * 3f);
         }
         drawHudPanel();
-        if (state != State.PLAYING) {
+        if (state == State.COMPLETE) {
+            shapes.setColor(PANEL);
+            shapes.rect(150f, 90f, 660f, 360f);
+        } else if (state != State.PLAYING) {
             shapes.setColor(PANEL);
             shapes.rect(180f, 150f, 600f, 280f);
         }
@@ -425,11 +444,13 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void drawHudText(MotionInput input) {
+        float x = 20f;
+
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, phase.title, 20f, WORLD_HEIGHT - 12f);
+        font.draw(batch, phase.title, x, WORLD_HEIGHT - 12f);
 
         bigFont.setColor(COIN);
-        bigFont.draw(batch, "Pontos: " + score, 20f, WORLD_HEIGHT - 32f);
+        bigFont.draw(batch, "Pontos: " + score, x, WORLD_HEIGHT - 32f);
 
         boolean goalReached = itemsCollected >= phase.coinGoal;
         bigFont.setColor(goalReached ? OK : Color.WHITE);
@@ -448,23 +469,25 @@ public class GameScreen extends ScreenAdapter {
 
     private void drawOverlayText() {
         switch (state) {
+            case INTRO:
+                drawIntro();
+                break;
             case PAUSED:
                 drawCentered(bigFont, "PAUSADO", 320f, Color.WHITE);
                 drawCentered(font, "Aperte P para continuar", 270f, Color.LIGHT_GRAY);
                 break;
-            case INTRO:
-                drawIntro();
-                break;
             case WON:
-                drawCentered(bigFont, phase.isLast() ? "Você completou o rio!" : "Fase concluída!", 400f, OK);
+                drawCentered(bigFont, "Fase concluída!", 400f, OK);
                 drawResults();
-                drawCentered(font, phase.isLast() ? "ENTER jogar de novo    ESC tela de teste"
-                    : "ENTER próxima fase    ESC tela de teste", 175f, Color.LIGHT_GRAY);
+                drawCentered(font, "ENTER próxima fase    ESC tela de teste", 175f, Color.LIGHT_GRAY);
                 break;
             case LOST:
                 drawCentered(bigFont, lostReason, 400f, WARNING);
                 drawResults();
                 drawCentered(font, "ENTER tentar de novo    ESC tela de teste", 175f, Color.LIGHT_GRAY);
+                break;
+            case COMPLETE:
+                drawSummary();
                 break;
             default:
                 break;
@@ -484,15 +507,48 @@ public class GameScreen extends ScreenAdapter {
 
     private void drawResults() {
         MotionInput input = game.getInput();
-        float usedFraction = (maxPosition - minPosition) / 2f;
-        float usedDegrees = usedFraction * input.getCalibratedRangeDegrees();
+        float fraction = usedAmplitudeFraction();
 
         drawCentered(font, "Pontos: " + score, 345f, Color.WHITE);
         drawCentered(font, String.format(Locale.ROOT, "Moedas: %d de %d (meta: %d)   na margem: %d",
             itemsCollected, itemsSpawned, phase.coinGoal, edgeItemsCollected), 320f, Color.WHITE);
         drawCentered(font, "Batidas: " + hits, 295f, Color.WHITE);
         drawCentered(font, String.format(Locale.ROOT, "Amplitude usada: %.0f%% (%.0f de %.0f graus)",
-            usedFraction * 100f, usedDegrees, input.getCalibratedRangeDegrees()), 270f, Color.WHITE);
+            fraction * 100f, fraction * input.getCalibratedRangeDegrees(), input.getCalibratedRangeDegrees()),
+            270f, Color.WHITE);
+    }
+
+    private void drawSummary() {
+        drawCentered(bigFont, "Você completou o rio!", 425f, OK);
+        drawCentered(font, "Evolução nas fases", 380f, Color.LIGHT_GRAY);
+
+        float[] columns = {180f, 380f, 470f, 590f, 670f};
+        float y = 350f;
+        drawRow(columns, y, Color.LIGHT_GRAY, "Fase", "Pontos", "Moedas", "Batidas", "Amplitude");
+
+        List<PhaseResult> results = game.getResults();
+        int total = 0;
+        for (PhaseResult r : results) {
+            y -= 28f;
+            total += r.score;
+            drawRow(columns, y, Color.WHITE,
+                r.phase.title,
+                String.valueOf(r.score),
+                r.coins + " (" + r.edgeCoins + ")",
+                String.valueOf(r.hits),
+                String.format(Locale.ROOT, "%.0f%%  %.0f graus", r.amplitudeFraction * 100f, r.amplitudeDegrees));
+        }
+
+        drawCentered(bigFont, "Total: " + total + " pontos", 205f, COIN);
+        drawCentered(font, "Moedas: total (na margem)", 160f, Color.GRAY);
+        drawCentered(font, "ENTER jogar de novo    ESC tela de teste", 120f, Color.LIGHT_GRAY);
+    }
+
+    private void drawRow(float[] columns, float y, Color color, String... cells) {
+        font.setColor(color);
+        for (int i = 0; i < cells.length; i++) {
+            font.draw(batch, cells[i], columns[i], y);
+        }
     }
 
     private void drawCentered(BitmapFont f, String text, float y, Color color) {
