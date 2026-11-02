@@ -28,6 +28,7 @@ import static br.mackenzie.screens.RiverArt.*;
 
 public class GameScreen extends ScreenAdapter {
 
+    private static final float INTRO_TIME = 5f;
     private static final int START_LIVES = 3;
     private static final float INVULNERABLE_TIME = 1.5f;
 
@@ -37,15 +38,12 @@ public class GameScreen extends ScreenAdapter {
 
     private static final float ITEM_RADIUS = 14f;
 
-    private static final Color ROCK = new Color(0.45f, 0.45f, 0.48f, 1f);
-    private static final Color ROCK_LIGHT = new Color(0.62f, 0.62f, 0.66f, 1f);
-    private static final Color LOG = new Color(0.42f, 0.26f, 0.13f, 1f);
-    private static final Color LOG_END = new Color(0.70f, 0.52f, 0.32f, 1f);
     private static final Color COIN = new Color(1f, 0.80f, 0.15f, 1f);
     private static final Color COIN_LIGHT = new Color(1f, 0.93f, 0.55f, 1f);
+    private static final Color COIN_OUTLINE = new Color(0f, 0f, 0f, 0.5f);
     private static final Color HEART = new Color(0.90f, 0.20f, 0.25f, 1f);
 
-    private enum State { PLAYING, PAUSED, GAME_OVER, FINISHED }
+    private enum State { INTRO, PLAYING, PAUSED, WON, LOST }
 
     private static class Obstacle {
         final boolean isLog;
@@ -95,6 +93,7 @@ public class GameScreen extends ScreenAdapter {
 
     private final Main game;
     private final Phase phase;
+    private final Theme theme;
 
     private final FitViewport viewport;
     private final ShapeRenderer shapes;
@@ -110,12 +109,17 @@ public class GameScreen extends ScreenAdapter {
     private final Rectangle hullBox = new Rectangle();
     private final Rectangle sailBox = new Rectangle();
 
-    private State state = State.PLAYING;
+    private State state = State.INTRO;
+    private float introTimer = INTRO_TIME;
     private float elapsed;
+    private float animTime;
     private float scroll;
     private float obstacleTimer;
     private float itemTimer;
     private float invulnerableTimer;
+    private String lostReason = "";
+    private String message = "";
+    private float messageTimer;
 
     private int score;
     private int lives = START_LIVES;
@@ -129,6 +133,7 @@ public class GameScreen extends ScreenAdapter {
     public GameScreen(Main game, Phase phase) {
         this.game = game;
         this.phase = phase;
+        this.theme = phase.theme;
         itemTimer = phase.spawnInterval / 2f;
 
         viewport = new FitViewport(WORLD_WIDTH, WORLD_HEIGHT);
@@ -151,7 +156,14 @@ public class GameScreen extends ScreenAdapter {
         MotionInput input = game.getInput();
         float boatX = xFor(input.getPosition());
 
-        if (state == State.PLAYING) {
+        if (state == State.INTRO) {
+            animTime += delta;
+            scroll += phase.scrollSpeed * delta;
+            introTimer -= delta;
+            if (introTimer <= 0f) {
+                state = State.PLAYING;
+            }
+        } else if (state == State.PLAYING) {
             update(delta, input.getPosition(), boatX);
         }
 
@@ -160,8 +172,10 @@ public class GameScreen extends ScreenAdapter {
 
     private void update(float delta, float position, float boatX) {
         elapsed += delta;
+        animTime += delta;
         scroll += phase.scrollSpeed * delta;
         invulnerableTimer -= delta;
+        messageTimer -= delta;
 
         minPosition = Math.min(minPosition, position);
         maxPosition = Math.max(maxPosition, position);
@@ -204,9 +218,14 @@ public class GameScreen extends ScreenAdapter {
         }
 
         if (lives <= 0) {
-            state = State.GAME_OVER;
+            lose("O barco afundou!");
         } else if (elapsed >= phase.duration) {
-            state = State.FINISHED;
+            if (itemsCollected >= phase.coinGoal) {
+                state = State.WON;
+            } else {
+                int missing = phase.coinGoal - itemsCollected;
+                lose("Faltou " + missing + (missing == 1 ? " moeda!" : " moedas!"));
+            }
         }
     }
 
@@ -272,6 +291,15 @@ public class GameScreen extends ScreenAdapter {
             edgeItemsCollected++;
         }
         popups.add(new Popup("+" + points, item.circle.x, item.circle.y + 20f));
+        if (itemsCollected == phase.coinGoal) {
+            message = "Meta de moedas alcançada! Agora chegue ao fim.";
+            messageTimer = 2.5f;
+        }
+    }
+
+    private void lose(String reason) {
+        lostReason = reason;
+        state = State.LOST;
     }
 
     private void handleKeys() {
@@ -283,10 +311,18 @@ public class GameScreen extends ScreenAdapter {
             }
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
-            if (state == State.GAME_OVER) {
-                game.changeScreen(new GameScreen(game, phase));
-            } else if (state == State.FINISHED) {
-                game.changeScreen(new GameScreen(game, phase.isLast() ? Phase.ONE : phase.next()));
+            switch (state) {
+                case INTRO:
+                    state = State.PLAYING;
+                    break;
+                case WON:
+                    game.changeScreen(new GameScreen(game, phase.isLast() ? Phase.ONE : phase.next()));
+                    break;
+                case LOST:
+                    game.changeScreen(new GameScreen(game, phase));
+                    break;
+                default:
+                    break;
             }
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
@@ -295,7 +331,7 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void draw(MotionInput input, float boatX) {
-        ScreenUtils.clear(WATER);
+        ScreenUtils.clear(theme.water);
         viewport.apply();
         shapes.setProjectionMatrix(viewport.getCamera().combined);
         batch.setProjectionMatrix(viewport.getCamera().combined);
@@ -304,7 +340,7 @@ public class GameScreen extends ScreenAdapter {
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
         shapes.begin(ShapeRenderer.ShapeType.Filled);
-        drawRiver(shapes, scroll);
+        drawRiver(shapes, scroll, theme);
         for (Item item : items) {
             drawCoin(item);
         }
@@ -313,12 +349,12 @@ public class GameScreen extends ScreenAdapter {
         }
         boolean blinkOff = invulnerableTimer > 0f && ((int) (invulnerableTimer * 10f)) % 2 == 0;
         if (!blinkOff) {
-            drawBoat(shapes, boatX, BOAT_Y + (float) Math.sin(elapsed * 2.2f) * 3f);
+            drawBoat(shapes, boatX, BOAT_Y + (float) Math.sin(animTime * 2.2f) * 3f);
         }
         drawHudPanel();
         if (state != State.PLAYING) {
             shapes.setColor(PANEL);
-            shapes.rect(180f, 150f, 600f, 260f);
+            shapes.rect(180f, 150f, 600f, 280f);
         }
         shapes.end();
 
@@ -329,6 +365,9 @@ public class GameScreen extends ScreenAdapter {
             layout.setText(font, p.text);
             font.draw(batch, layout, p.x - layout.width / 2f, p.y);
         }
+        if (state == State.PLAYING && messageTimer > 0f) {
+            drawCentered(font, message, 420f, OK);
+        }
         drawOverlayText();
         batch.end();
     }
@@ -336,16 +375,16 @@ public class GameScreen extends ScreenAdapter {
     private void drawObstacle(Obstacle o) {
         if (o.isLog) {
             Rectangle r = o.rect;
-            shapes.setColor(LOG);
+            shapes.setColor(theme.log);
             shapes.rect(r.x, r.y, r.width, r.height);
-            shapes.setColor(LOG_END);
+            shapes.setColor(theme.logEnd);
             shapes.circle(r.x, r.y + r.height / 2f, r.height / 2f);
             shapes.circle(r.x + r.width, r.y + r.height / 2f, r.height / 2f);
         } else {
             Circle c = o.circle;
-            shapes.setColor(ROCK);
+            shapes.setColor(theme.rock);
             shapes.circle(c.x, c.y, c.radius);
-            shapes.setColor(ROCK_LIGHT);
+            shapes.setColor(theme.rockLight);
             shapes.circle(c.x - c.radius * 0.3f, c.y + c.radius * 0.3f, c.radius * 0.35f);
         }
     }
@@ -354,8 +393,10 @@ public class GameScreen extends ScreenAdapter {
         Circle c = item.circle;
         if (item.nearEdge) {
             shapes.setColor(1f, 1f, 1f, 0.35f);
-            shapes.circle(c.x, c.y, c.radius + 6f);
+            shapes.circle(c.x, c.y, c.radius + 7f);
         }
+        shapes.setColor(COIN_OUTLINE);
+        shapes.circle(c.x, c.y, c.radius + 3f);
         shapes.setColor(COIN);
         shapes.circle(c.x, c.y, c.radius);
         shapes.setColor(COIN_LIGHT);
@@ -370,7 +411,7 @@ public class GameScreen extends ScreenAdapter {
         for (int i = 0; i < START_LIVES; i++) {
             shapes.setColor(i < lives ? HEART : Color.DARK_GRAY);
             float x = 30f + i * 40f;
-            float y = WORLD_HEIGHT - 95f;
+            float y = WORLD_HEIGHT - 105f;
             shapes.circle(x - 7f, y + 6f, 9f);
             shapes.circle(x + 7f, y + 6f, 9f);
             shapes.triangle(x - 16f, y + 3f, x + 16f, y + 3f, x, y - 16f);
@@ -390,9 +431,9 @@ public class GameScreen extends ScreenAdapter {
         bigFont.setColor(COIN);
         bigFont.draw(batch, "Pontos: " + score, 20f, WORLD_HEIGHT - 32f);
 
-        font.setColor(Color.WHITE);
-        font.draw(batch, String.format(Locale.ROOT, "Moedas: %d   (margem: %d)", itemsCollected, edgeItemsCollected),
-            200f, WORLD_HEIGHT - 85f);
+        boolean goalReached = itemsCollected >= phase.coinGoal;
+        bigFont.setColor(goalReached ? OK : Color.WHITE);
+        bigFont.draw(batch, "Moedas: " + itemsCollected + " / " + phase.coinGoal, 200f, WORLD_HEIGHT - 85f);
 
         font.setColor(Color.LIGHT_GRAY);
         int remaining = (int) Math.ceil(Math.max(phase.duration - elapsed, 0f));
@@ -411,20 +452,34 @@ public class GameScreen extends ScreenAdapter {
                 drawCentered(bigFont, "PAUSADO", 320f, Color.WHITE);
                 drawCentered(font, "Aperte P para continuar", 270f, Color.LIGHT_GRAY);
                 break;
-            case GAME_OVER:
-                drawCentered(bigFont, "O barco afundou!", 380f, WARNING);
-                drawResults();
-                drawCentered(font, "ENTER tentar de novo    ESC tela de teste", 190f, Color.LIGHT_GRAY);
+            case INTRO:
+                drawIntro();
                 break;
-            case FINISHED:
-                drawCentered(bigFont, phase.isLast() ? "Você completou o rio!" : phase.title + " concluída!", 380f, OK);
+            case WON:
+                drawCentered(bigFont, phase.isLast() ? "Você completou o rio!" : "Fase concluída!", 400f, OK);
                 drawResults();
                 drawCentered(font, phase.isLast() ? "ENTER jogar de novo    ESC tela de teste"
-                    : "ENTER próxima fase    ESC tela de teste", 190f, Color.LIGHT_GRAY);
+                    : "ENTER próxima fase    ESC tela de teste", 175f, Color.LIGHT_GRAY);
+                break;
+            case LOST:
+                drawCentered(bigFont, lostReason, 400f, WARNING);
+                drawResults();
+                drawCentered(font, "ENTER tentar de novo    ESC tela de teste", 175f, Color.LIGHT_GRAY);
                 break;
             default:
                 break;
         }
+    }
+
+    private void drawIntro() {
+        drawCentered(bigFont, phase.title, 395f, Color.WHITE);
+        drawCentered(font, String.format(Locale.ROOT, "Objetivo: chegue ao fim do rio (%.0f s) e pegue %d moedas.",
+            phase.duration, phase.coinGoal), 340f, COIN);
+        drawCentered(font, "Desvie das pedras e dos troncos: você tem " + START_LIVES + " vidas.", 312f, Color.WHITE);
+        drawCentered(font, "Moedas com brilho, perto das margens, valem o dobro.", 288f, Color.WHITE);
+        drawCentered(font, "Chegar ao fim sem a meta de moedas não vence a fase.", 264f, WARNING);
+        drawCentered(bigFont, "Começa em " + (int) Math.ceil(Math.max(introTimer, 0f)), 215f, OK);
+        drawCentered(font, "ENTER começar agora", 175f, Color.LIGHT_GRAY);
     }
 
     private void drawResults() {
@@ -432,12 +487,12 @@ public class GameScreen extends ScreenAdapter {
         float usedFraction = (maxPosition - minPosition) / 2f;
         float usedDegrees = usedFraction * input.getCalibratedRangeDegrees();
 
-        drawCentered(font, "Pontos: " + score, 330f, Color.WHITE);
-        drawCentered(font, String.format(Locale.ROOT, "Moedas: %d de %d   (na margem: %d)",
-            itemsCollected, itemsSpawned, edgeItemsCollected), 305f, Color.WHITE);
-        drawCentered(font, "Batidas: " + hits, 280f, Color.WHITE);
+        drawCentered(font, "Pontos: " + score, 345f, Color.WHITE);
+        drawCentered(font, String.format(Locale.ROOT, "Moedas: %d de %d (meta: %d)   na margem: %d",
+            itemsCollected, itemsSpawned, phase.coinGoal, edgeItemsCollected), 320f, Color.WHITE);
+        drawCentered(font, "Batidas: " + hits, 295f, Color.WHITE);
         drawCentered(font, String.format(Locale.ROOT, "Amplitude usada: %.0f%% (%.0f de %.0f graus)",
-            usedFraction * 100f, usedDegrees, input.getCalibratedRangeDegrees()), 255f, Color.WHITE);
+            usedFraction * 100f, usedDegrees, input.getCalibratedRangeDegrees()), 270f, Color.WHITE);
     }
 
     private void drawCentered(BitmapFont f, String text, float y, Color color) {
