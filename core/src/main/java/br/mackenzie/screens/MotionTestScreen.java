@@ -118,6 +118,7 @@ public class MotionTestScreen extends ScreenAdapter {
             showMessage("Controle: " + game.getInput().getSourceName());
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) && !input.isCalibrating()) {
+            game.getResults().clear();
             game.changeScreen(new GameScreen(game, Phase.ONE));
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {

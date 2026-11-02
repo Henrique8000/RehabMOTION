@@ -1,9 +1,13 @@
 package br.mackenzie;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 
+import br.mackenzie.game.PhaseResult;
 import br.mackenzie.input.MotionInput;
 import br.mackenzie.input.MotionInputs;
 import br.mackenzie.screens.MotionTestScreen;
@@ -13,6 +17,7 @@ public class Main extends Game {
     private final String portName;
     private MotionInput input;
     private Screen nextScreen;
+    private final List<PhaseResult> results = new ArrayList<>();
 
     public Main(String portName) {
         this.portName = portName;
@@ -46,6 +51,10 @@ public class Main extends Game {
 
     public MotionInput getInput() {
         return input;
+    }
+
+    public List<PhaseResult> getResults() {
+        return results;
     }
 
     public void switchInput() {
