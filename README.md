@@ -1,58 +1,98 @@
-# RehabMOTION (libGDX + Arduino)
+# RehabMOTION
 
-Jogo sério para reabilitação de **amplitude de movimento** (punho ou joelho).
-Um potenciômetro preso à articulação mede o ângulo; o Arduino envia esse valor
-pela USB e o jogador controla um barquinho que desvia de obstáculos no rio.
+Jogo sério para **reabilitação da amplitude de movimento do punho**, feito em Java com libGDX
+para a disciplina de Jogos Digitais da Universidade Presbiteriana Mackenzie.
 
-Estado atual: **camada de controle pronta** + **tela de teste** (o barco segue o
-movimento, com calibração). As fases, o menu e os obstáculos são os próximos passos.
+Um potenciômetro preso ao punho funciona como um goniômetro: mede o ângulo de flexão e extensão e
+o Arduino envia esse valor pela USB. O jogador conduz um barco por um rio só com o movimento do
+punho, desviando de pedras e troncos e pegando moedas. As moedas perto das margens exigem levar o
+punho até o limite do movimento, e cada fase mede a amplitude que o paciente realmente usou.
+
+**Autores**
+
+- Henrique Flávio Guimarães (RA 10427920)
+- Lucas Zeferino Baracat (RA 10396267)
 
 ---
 
-## 1. Materiais (baratos e fáceis de achar)
+## O jogo
+
+São **3 fases** de 60 segundos com dificuldade crescente. Para vencer, é preciso chegar ao fim do
+rio com a meta de moedas; bater 3 vezes afunda o barco.
+
+| Fase | Cenário | Velocidade do rio | Intervalo entre obstáculos | Moedas perto da margem | Meta de moedas |
+|---|---|---|---|---|---|
+| 1 | Rio | 150 | 1,3 s | 50% | 8 |
+| 2 | Floresta tropical | 190 | 1,05 s | 65% | 12 |
+| 3 | Vulcão | 230 | 0,85 s | 80% | 16 |
+
+- Moeda comum vale 10 pontos; moeda com brilho, perto da margem, vale 20.
+- Antes de cada fase aparece uma introdução com o objetivo e uma contagem de 5 segundos.
+- Ao fim de cada fase aparecem pontos, moedas, batidas e a **amplitude usada** (em % e em graus).
+- Ao vencer a fase 3 aparece a tabela **"Evolução nas fases"**, comparando as três fases.
+
+### Métricas de reabilitação
+
+| Métrica | O que indica |
+|---|---|
+| Amplitude calibrada (graus) | o alcance máximo do paciente naquela sessão |
+| Amplitude usada por fase (% e graus) | quanto desse alcance foi usado durante o jogo |
+| Moedas perto da margem | quantas vezes o punho chegou perto do limite |
+| Batidas | controle e precisão do movimento |
+
+---
+
+## Hardware
 
 | Item | Observação |
 |---|---|
-| Arduino Uno ou Nano (pode ser clone) | o grupo talvez já tenha um |
-| Potenciômetro linear **10k (B10K)** | o mais comum; custa poucos reais |
-| 3 jumpers (fios) e protoboard | protoboard é opcional |
+| Arduino Uno (pode ser clone) | clones com chip CH340 precisam do driver CH340 no Windows |
+| Potenciômetro linear 10k (B10K) | |
+| 3 jumpers | |
 | Cabo USB do Arduino | |
-| 2 réguas de plástico, palitos grandes ou papelão grosso | para montar o "goniômetro" |
-| Velcro ou elástico + fita / cola quente | para prender no braço ou perna |
+| 2 hastes (réguas, palitos ou papelão grosso) e velcro | para montar o goniômetro no punho |
 
-> Clones com chip **CH340** precisam do driver CH340 no Windows.
-
-## 2. Ligações
+### Ligações
 
 ```
-Potenciômetro (vista de frente, pernas para baixo)
+Potenciômetro (de frente, pernas para baixo)
 
    esquerda   meio    direita
       |        |        |
      5V       A0       GND
 ```
 
-Se o barco andar para o lado errado, aperte **I** no jogo (ou troque os fios das pontas).
+Qualquer um dos pinos GND do Arduino serve. Se o barco andar para o lado errado, aperte **I** na
+tela de teste para inverter o sentido.
 
-## 3. Montagem no corpo ("goniômetro caseiro")
+### Montagem no punho
 
-Exemplo para **flexão e extensão do punho**:
+1. Prenda o corpo do potenciômetro na ponta de uma haste, presa no **antebraço**.
+2. Prenda o eixo do potenciômetro na outra haste, presa no **dorso da mão**.
+3. Deixe o eixo bem em cima da articulação do punho.
+4. Ao dobrar o punho, uma haste gira em relação à outra e o eixo gira junto.
 
-1. Cole o **corpo** do potenciômetro na ponta de uma régua; essa régua vai presa no **antebraço**.
-2. Prenda o **eixo** (pode colar um botão/knob nele) na outra régua; essa vai presa no **dorso da mão**.
-3. O eixo do potenciômetro fica exatamente em cima da articulação do punho.
-4. Ao dobrar o punho, as réguas giram uma em relação à outra e o eixo gira junto.
+### Arduino
 
-Para o **joelho** é a mesma ideia, com réguas mais compridas (coxa e canela).
+1. Abra `arduino/controle_potenciometro/controle_potenciometro.ino` na Arduino IDE.
+2. Em **Ferramentas**, escolha a placa **Arduino Uno** e a porta (por exemplo, COM3).
+3. Clique em **Carregar**.
+4. Para conferir, abra **Ferramentas > Plotter Serial** a 9600: a linha sobe e desce ao girar.
+5. **Feche o Plotter e o Monitor Serial antes de abrir o jogo**: a porta só aceita um programa por vez.
 
-## 4. Arduino
+O Arduino envia uma linha por leitura, só com o número de 0 a 1023 (média de 4 leituras, a cada 20 ms):
 
-1. Abra `arduino/controle_potenciometro/controle_potenciometro.ino` na IDE do Arduino.
-2. Escolha a placa e a porta, e envie (**Carregar**).
-3. Teste em **Ferramentas > Plotter Serial** (9600): ao mexer, a linha sobe e desce.
-4. **Feche o Plotter/Monitor Serial** antes de abrir o jogo: a porta só aceita um programa.
+```
+512
+518
+530
+```
 
-## 5. Rodar o jogo
+---
+
+## Como rodar
+
+Requer JDK 17 ou mais novo.
 
 ```bash
 # Windows
@@ -62,84 +102,78 @@ gradlew.bat lwjgl3:run
 ./gradlew lwjgl3:run
 ```
 
-Ou abra a pasta no IntelliJ IDEA (ele reconhece o Gradle) e rode `Lwjgl3Launcher`.
+- Com o Arduino ligado, o jogo encontra a porta sozinho.
+- Sem o Arduino, o jogo usa o **teclado** para simular o sensor (setas ou A/D).
+- Para forçar uma porta: `gradlew.bat lwjgl3:run --args="COM3"`.
+- Para gerar o executável: `gradlew.bat lwjgl3:jar` (fica em `lwjgl3/build/libs/`).
 
-- Com o Arduino ligado, o jogo o encontra sozinho.
-- Sem o Arduino, o jogo usa o **teclado** (setas ou A/D) para simular o sensor.
-- Para forçar uma porta: `gradlew lwjgl3:run --args="COM3"`.
-- Executável (.jar): `gradlew lwjgl3:jar` → fica em `lwjgl3/build/libs/`.
+### Controles
 
-### Teclas da tela de teste
+**Tela de teste e calibração**
 
 | Tecla | Ação |
 |---|---|
+| ENTER | começar o jogo na fase 1 |
 | C | começar / terminar a calibração |
 | R | voltar à calibração padrão |
 | I | inverter o sentido |
 | TAB | trocar entre Arduino e teclado |
 | ESC | sair |
 
-**Calibrar:** aperte C, mova a articulação até o extremo de um lado e depois do outro,
-e aperte C de novo. Essa faixa passa a ser a "tela inteira" do barco, então cada
-paciente usa a amplitude que consegue alcançar. A amplitude calibrada (em graus)
-já é uma métrica de evolução para o relatório.
+**Durante o jogo**
+
+| Tecla | Ação |
+|---|---|
+| Punho (ou setas / A e D) | mover o barco |
+| ENTER | pular a introdução; próxima fase; tentar de novo |
+| P | pausar / continuar |
+| ESC | voltar para a tela de teste |
+
+### Calibração
+
+Aperte **C**, leve o punho até o extremo de um lado e depois do outro, e aperte **C** de novo.
+Essa faixa passa a ser a largura inteira do rio, então cada paciente joga com a amplitude que
+consegue alcançar. A amplitude calibrada, em graus, aparece na tela e é usada nos resultados.
 
 ---
 
-## 6. Como o código está organizado
+## Organização do código
 
 ```
 core/src/main/java/br/mackenzie/
-├── Main.java                     cria o controle e a primeira tela
+├── Main.java                     cria o controle, troca as telas e guarda os resultados
+├── game/
+│   ├── Phase.java                as 3 fases e a dificuldade de cada uma
+│   └── PhaseResult.java          resultado de uma fase vencida
 ├── input/
-│   ├── MotionInput.java          INTERFACE: o que o jogo sabe sobre o controle
-│   ├── AbstractMotionInput.java  parte comum: suavização, calibração, ângulo, posição
-│   ├── ArduinoMotionInput.java   lê o Arduino pela USB (jSerialComm)
-│   ├── KeyboardMotionInput.java  simula o sensor com o teclado
-│   └── MotionInputs.java         escolhe Arduino ou teclado
+│   ├── MotionInput.java          interface do controle usada pelo jogo
+│   ├── AbstractMotionInput.java  suavização, calibração, ângulo e posição
+│   ├── ArduinoMotionInput.java   leitura do Arduino pela USB (jSerialComm)
+│   ├── KeyboardMotionInput.java  simulação do sensor pelo teclado
+│   └── MotionInputs.java         escolhe entre Arduino e teclado
 └── screens/
-    └── MotionTestScreen.java     tela de teste com o barquinho
+    ├── MotionTestScreen.java     tela de teste e calibração
+    ├── GameScreen.java           o jogo: obstáculos, moedas, fases e resultados
+    ├── RiverArt.java             desenho do rio, das margens e do barco
+    └── Theme.java                cores de cada cenário
 lwjgl3/.../Lwjgl3Launcher.java    abre a janela no computador
 arduino/controle_potenciometro/   código do Arduino
 ```
 
-O jogo só usa a interface `MotionInput`. O valor principal é `getPosition()`,
-de **-1** (extremo esquerdo) a **+1** (extremo direito):
+O jogo só conversa com a interface `MotionInput`. O valor principal é `getPosition()`, de **-1**
+(um extremo calibrado) a **+1** (o outro). Por isso o Arduino e o teclado são intercambiáveis sem
+mudar nada no jogo.
 
-```java
-MotionInput input = game.getInput();
-float x = centroDoRio + input.getPosition() * larguraMaxima;
-```
-
-Por isso dá para desenvolver tudo com o teclado e trocar para o Arduino sem mudar
-nenhuma linha do jogo (polimorfismo, como no Lab 6).
-
-### Protocolo Arduino → jogo
-
-Uma linha de texto por leitura, só o número de 0 a 1023, a 9600 baud:
-
-```
-512
-518
-530
-```
-
-Linhas inválidas são ignoradas. Se os dados param por 1 segundo, o jogo mostra
-"desconectado" e tenta reconectar sozinho.
+Se os dados do Arduino param por 1 segundo, o jogo mostra "desconectado" e tenta reconectar sozinho.
 
 ---
 
-## 7. Próximos passos
+## Tecnologias
 
-- [ ] Obstáculos e itens no rio (itens perto das margens incentivam a amplitude)
-- [ ] 3 fases com dificuldade progressiva (velocidade, alcance pedido, duração)
-- [ ] Menu principal (iniciar, pausar, reiniciar) **controlado pelo sensor**:
-      por exemplo, segurar o movimento para um lado por 1 segundo para escolher
-      (o enunciado pede controle exclusivo pelo dispositivo; o teclado fica só
-      para desenvolvimento e para a tela de ajuste)
-- [ ] Métricas por fase: amplitude alcançada, tempo nos extremos, itens coletados,
-      suavidade do movimento; salvar histórico para mostrar a evolução
-- [ ] Sprites e sons
+- Java e [libGDX](https://libgdx.com/) 1.13.1
+- [jSerialComm](https://fazecast.github.io/jSerialComm/) 2.11.4 para a comunicação serial
+- Gradle
+- Arduino Uno
 
-> Projeto acadêmico: as faixas de movimento e a duração das sessões devem ser
+> Projeto acadêmico. Em uso real, a amplitude de movimento e a duração das sessões devem ser
 > definidas com orientação de um fisioterapeuta.
